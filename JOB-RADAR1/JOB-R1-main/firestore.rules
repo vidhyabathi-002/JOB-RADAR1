@@ -1,0 +1,126 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // -------------------------------------------------------------------------
+    // 0. GLOBAL SAFETY NET & HELPERS
+    // -------------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // -------------------------------------------------------------------------
+    // 1. USERS COLLECTION
+    // -------------------------------------------------------------------------
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.id == request.auth.uid 
+            && (data.email == null || (data.email is string && data.email.size() > 0))
+            && (data.name == null || (data.name is string && data.name.size() > 0))
+            && data.role in ['JOB_SEEKER', 'EMPLOYER', 'ADMIN', 'GUEST'];
+      }
+
+      allow get: if isSignedIn(); 
+      allow list: if false; 
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming())
+                    && incoming().id == existing().id 
+                    && (incoming().role == existing().role || existing().role == 'GUEST'); 
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. JOBS COLLECTION
+    // -------------------------------------------------------------------------
+    match /jobs/{jobId} {
+      function isAdmin() {
+        return isSignedIn() && (request.auth.token.email == 'kk3777096@gmail.com');
+      }
+
+      function isValidJob(data) {
+        return data.keys().hasAny(['title', 'company', 'category', 'location', 'status', 'employerId'])
+            && data.title is string && data.title.size() > 0
+            && data.status in ['OPEN', 'CLOSED', 'PENDING', 'REJECTED', 'DELETED'];
+      }
+
+      allow read: if true; 
+      allow create: if isSignedIn() && (
+        isAdmin() || 
+        (incoming().employerId == request.auth.uid && isValidJob(incoming())) ||
+        (incoming().source == 'adzuna')
+      );
+      allow update: if isSignedIn() && (isAdmin() || (existing().employerId == request.auth.uid && isValidJob(incoming())));
+      allow delete: if isSignedIn() && (isAdmin() || (existing().employerId == request.auth.uid));
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. APPLICATIONS COLLECTION
+    // -------------------------------------------------------------------------
+    match /applications/{appId} {
+      function isValidApplication(data) {
+        return data.seekerId == request.auth.uid
+            && data.jobId is string && data.jobId.size() > 0;
+      }
+
+      allow read: if isSignedIn() && (resource.data.seekerId == request.auth.uid || resource.data.employerId == request.auth.uid);
+      allow create: if isSignedIn() && isValidApplication(incoming());
+      allow update: if isSignedIn() 
+                    && (
+                      (resource.data.seekerId == request.auth.uid && incoming().status == 'REJECTED' && incoming().diff(existing()).affectedKeys().hasOnly(['status'])) ||
+                      (resource.data.employerId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['status']))
+                    );
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. COMMUNITY POSTS
+    // -------------------------------------------------------------------------
+    match /community_posts/{postId} {
+      function isValidPost(data) {
+        return data.userId == request.auth.uid
+            && data.content is string && data.content.size() > 0;
+      }
+
+      allow read: if true;
+      allow create: if isSignedIn() && isValidPost(incoming());
+      allow update: if isSignedIn() && (
+        isOwner(resource.data.userId) || 
+        (incoming().diff(existing()).affectedKeys().hasOnly(['likes']))
+      );
+      allow delete: if isOwner(resource.data.userId);
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. CHAT ROOMS & MESSAGES
+    // -------------------------------------------------------------------------
+    match /rooms/{roomId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow create: if isSignedIn() && request.auth.uid in request.resource.data.participants;
+      allow update: if isSignedIn() && request.auth.uid in resource.data.participants;
+
+      match /messages/{msgId} {
+        allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.participants;
+        allow create: if isSignedIn() 
+                      && request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomId)).data.participants
+                      && request.resource.data.senderId == request.auth.uid;
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "Job Radar",
+  "description": "A real-time, location-aware job discovery, tracking, and skill-matching platform that unifies local micro-employment and professional IT positions across Tamil Nadu.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

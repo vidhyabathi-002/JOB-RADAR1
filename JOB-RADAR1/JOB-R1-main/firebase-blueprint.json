@@ -1,0 +1,164 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and role information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["JOB_SEEKER", "EMPLOYER", "ADMIN", "GUEST"] },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "bio": { "type": "string" },
+        "avatar": { "type": "string" },
+        "savedJobs": { "type": "array", "items": { "type": "string" } },
+        "profileStrength": { "type": "number" },
+        "atsScore": { "type": "number" },
+        "aiVerified": { "type": "boolean" },
+        "experience": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "company": { "type": "string" },
+              "period": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "education": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "degree": { "type": "string" },
+              "school": { "type": "string" },
+              "year": { "type": "string" }
+            }
+          }
+        },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" },
+            "area": { "type": "string" }
+          }
+        }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "Job": {
+      "title": "Job",
+      "description": "Job posting details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "company": { "type": "string" },
+        "employerId": { "type": "string" },
+        "category": { "type": "string", "enum": ["IT", "LOCAL"] },
+        "salary": { "type": "string" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" },
+            "address": { "type": "string" },
+            "area": { "type": "string" }
+          }
+        },
+        "skills_required": { "type": "array", "items": { "type": "string" } },
+        "urgent": { "type": "boolean" },
+        "posted_at": { "type": "string" },
+        "description": { "type": "string" },
+        "status": { "type": "string", "enum": ["OPEN", "CLOSED", "PENDING", "REJECTED"] }
+      },
+      "required": ["id", "title", "company", "employerId", "category", "location", "status"]
+    },
+    "Application": {
+      "title": "Application",
+      "description": "Job application from a seeker to an employer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "jobId": { "type": "string" },
+        "seekerId": { "type": "string" },
+        "employerId": { "type": "string" },
+        "appliedDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["APPLIED", "UNDER_REVIEW", "INTERVIEW", "OFFERED", "REJECTED"] },
+        "seekerName": { "type": "string" },
+        "jobTitle": { "type": "string" }
+      },
+      "required": ["id", "jobId", "seekerId", "employerId", "status"]
+    },
+    "CommunityPost": {
+      "title": "Community Post",
+      "description": "Post in the regional community feed",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userAvatar": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "likes": { "type": "number" },
+        "type": { "type": "string", "enum": ["UPDATE", "JOB_LEAD", "EVENT"] }
+      },
+      "required": ["id", "userId", "content", "timestamp"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "Message in a direct pulse chat",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "senderId", "text", "timestamp"]
+    },
+    "ChatRoom": {
+      "title": "Chat Room",
+      "description": "Container for direct messages between users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "lastMessage": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "participants"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Root user profile document"
+    },
+    "/jobs/{jobId}": {
+      "schema": "Job",
+      "description": "Job posting document"
+    },
+    "/applications/{appId}": {
+      "schema": "Application",
+      "description": "Application record"
+    },
+    "/community_posts/{postId}": {
+      "schema": "CommunityPost",
+      "description": "Community feed post"
+    },
+    "/rooms/{roomId}": {
+      "schema": "ChatRoom",
+      "description": "Chat room metadata"
+    },
+    "/rooms/{roomId}/messages/{msgId}": {
+      "schema": "ChatMessage",
+      "description": "Message in a chat room"
+    }
+  }
+}
